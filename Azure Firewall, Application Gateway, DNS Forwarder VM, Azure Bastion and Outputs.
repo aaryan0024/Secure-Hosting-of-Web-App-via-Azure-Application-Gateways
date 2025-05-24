@@ -1,0 +1,109 @@
+#--------------------------
+# Azure Firewall
+#--------------------------
+resource "azurerm_firewall" "fw" {
+  name                = "fw-hub"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku_name            = "AZFW_VNet"
+  sku_tier            = "Standard"
+  ip_configuration {
+    name                 = "configuration"
+    subnet_id            = azurerm_subnet.firewall_subnet.id
+    public_ip_address_id = azurerm_public_ip.fw_pip.id
+  }
+}
+
+resource "azurerm_subnet" "firewall_subnet" {
+  name                 = "AzureFirewallSubnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_public_ip" "fw_pip" {
+  name                = "fw-public-ip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+#--------------------------
+# Application Gateway
+#--------------------------
+resource "azurerm_public_ip" "appgw_pip" {
+  name                = "appgw-public-ip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_subnet" "appgw_subnet" {
+  name                 = "appgw-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+# Placeholder for Application Gateway resource with listeners, frontend IPs, SSL cert, routing rules
+
+#--------------------------
+# DNS Forwarder VM
+#--------------------------
+# Placeholder for Linux/Windows VM configured with DNS forwarders
+# Set custom DNS in Spoke VNet settings to point to this VM's IP
+
+#--------------------------
+# Azure Bastion
+#--------------------------
+resource "azurerm_subnet" "bastion_subnet" {
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.3.0/24"]
+}
+
+resource "azurerm_public_ip" "bastion_pip" {
+  name                = "bastion-pip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_bastion_host" "bastion" {
+  name                = "bastion-host"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  dns_name            = "bastion-${azurerm_resource_group.rg.location}"
+  ip_configuration {
+    name                 = "configuration"
+    subnet_id            = azurerm_subnet.bastion_subnet.id
+    public_ip_address_id = azurerm_public_ip.bastion_pip.id
+  }
+}
+
+#--------------------------
+# Outputs and TODO
+#--------------------------
+# TODO:
+# - Implement Application Gateway listener, SSL cert, rules
+# - Deploy DNS forwarder VM
+# - Set private endpoint for storage
+# - Add UDRs to route all traffic via Azure Firewall
+# - Link private DNS zones
+# - Add Network Watcher/Monitoring
+
+output "hub_vnet_id" {
+  value = azurerm_virtual_network.hub.id
+}
+
+output "spoke_web_vnet_id" {
+  value = azurerm_virtual_network.spoke_web.id
+}
+
+output "spoke_storage_vnet_id" {
+  value = azurerm_virtual_network.spoke_storage.id
+}
